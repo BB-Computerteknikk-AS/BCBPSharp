@@ -6,3 +6,5 @@ A BCBP parser written in C#
 The package is available on NuGet
 
 https://www.nuget.org/packages/BCBPSharp/ 
+
+Based on https://github.com/georgesmith46/bcbp
