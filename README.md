@@ -1,6 +1,6 @@
 
 # BCBPSharp
-A BCBP parser written in C#
+A BCBP (bar-coded boarding pass) parser written in C#
 
 [![.NET](https://github.com/BB-Computerteknikk-AS/BCBPSharp/actions/workflows/dotnet.yml/badge.svg?branch=main)](https://github.com/BB-Computerteknikk-AS/BCBPSharp/actions/workflows/dotnet.yml)
 
