@@ -3,6 +3,16 @@
   <PropertyGroup>
     <TargetFramework>net5.0</TargetFramework>
     <RootNamespace>no.bbc.BCBPSharp</RootNamespace>
+    <PackOnBuild>true</PackOnBuild>
+    <PackageVersion>1.0</PackageVersion>
+    <Authors>BB Computerteknikk AS</Authors>
+    <Copyright>BB Computerteknikk AS (BBC)</Copyright>
+    <PackageLicenseUrl>https://raw.githubusercontent.com/BB-Computerteknikk-AS/BCBPSharp/main/LICENSE</PackageLicenseUrl>
+    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+    <Owners>BB Computerteknikk AS</Owners>
+    <PackageProjectUrl>https://github.com/BB-Computerteknikk-AS/BCBPSharp/blob/main/README.md</PackageProjectUrl>
+    <Title>BCBPSharp</Title>
+    <Description>A BCBP (bar-coded boarding pass) parser written in C#</Description>
   </PropertyGroup>
 
 </Project>
