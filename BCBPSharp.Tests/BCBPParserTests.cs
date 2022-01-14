@@ -40,7 +40,7 @@ namespace no.bbc.BCBPSharp.Tests
         {
             var parseResult = BCBPParser.Parse("M1DOE/JOHN            EXYZ123 ZRHSFOBA 1234 099F035A0001 100");
 
-            var expectedFlightDate = new DateTime(2021, 04, 09);
+            var expectedFlightDate = new DateTime(DateTime.Now.Year, 04, 09);
 
             Assert.Equal("DOE/JOHN", parseResult.passengerName);
 
