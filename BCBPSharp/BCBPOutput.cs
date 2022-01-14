@@ -6,6 +6,11 @@ namespace no.bbc.BCBPSharp
 {
     public class BCBPOutput
     {
+        public BCBPOutput(string rawData)
+        {
+            this.rawData = rawData;
+        }
+        
         public DateTime? issuanceDate { get; set; }
         public string passengerDescription { get; set; }
         public List<BCBPLeg> Legs { get; set; } = new List<BCBPLeg>();
@@ -18,6 +23,8 @@ namespace no.bbc.BCBPSharp
         public string securityData { get; set; }
         public string boardingPassIssuanceSource { get; set; }
         public string baggageTagNumber { get; set; }
+
+        public string rawData { get; private set; }
 
         /// <summary>
         /// Allows to assign the properties dynamically

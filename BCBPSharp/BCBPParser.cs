@@ -118,7 +118,7 @@ namespace no.bbc.BCBPSharp
         {
             var legs = int.Parse(barcodeString.Substring(1, 1));
 
-            var output = new BCBPOutput();
+            var output = new BCBPOutput(barcodeString);
 
             for (var i = 0; i < legs; i++)
             {
