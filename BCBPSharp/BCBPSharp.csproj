@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net5.0</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
     <RootNamespace>no.bbc.BCBPSharp</RootNamespace>
     <PackOnBuild>true</PackOnBuild>
     <PackageVersion>1.0.1</PackageVersion>
@@ -13,6 +13,7 @@
     <PackageProjectUrl>https://github.com/BB-Computerteknikk-AS/BCBPSharp/blob/main/README.md</PackageProjectUrl>
     <Title>BCBPSharp</Title>
     <Description>A BCBP (bar-coded boarding pass) parser written in C#</Description>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
 </Project>

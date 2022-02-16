@@ -1,174 +1,160 @@
-﻿using System;
-using System.Linq;
+﻿using System.Collections.Generic;
 
 namespace no.bbc.BCBPSharp
 {
     public class BCBPParser
     {
-        private static object GetFieldValue(BCBPField field, string value, int? referenceYear)
+        public static BarcodedBoardingPass Parse(string barcodeString, int? referenceYear = null)
         {
-            if (string.IsNullOrEmpty(value))
+            var bcbp = new BarcodedBoardingPass(barcodeString);
+            var mainSection = new SectionDecoder(barcodeString);
+
+            bcbp.data = new BoardingPassData();
+            bcbp.meta = new BoardingPassMetaData();
+            bcbp.meta.formatCode = mainSection.getNextString(LENGTHS.FORMAT_CODE);
+            bcbp.meta.numberOfLegs = mainSection.getNextNumber(LENGTHS.NUMBER_OF_LEGS) ?? 0;
+            bcbp.data.passengerName = mainSection.getNextString(LENGTHS.PASSENGER_NAME);
+            bcbp.meta.electronicTicketIndicator = mainSection.getNextString(
+                LENGTHS.ELECTRONIC_TICKET_INDICATOR
+            );
+
+            bcbp.data.Legs = new List<Leg>();
+
+            var addedUniqueFields = false;
+
+            for (var legIndex = 0; legIndex < bcbp.meta.numberOfLegs; legIndex++)
             {
-                return string.Empty;
-            }
+                var leg = new Leg();
+                leg.operatingCarrierPNR = mainSection.getNextString(
+                    LENGTHS.OPERATING_CARRIER_PNR
+                );
+                leg.departureAirport = mainSection.getNextString(LENGTHS.DEPARTURE_AIRPORT);
+                leg.arrivalAirport = mainSection.getNextString(LENGTHS.ARRIVAL_AIRPORT);
+                leg.operatingCarrierDesignator = mainSection.getNextString(
+                    LENGTHS.OPERATING_CARRIER_DESIGNATOR
+                );
+                leg.flightNumber = mainSection.getNextString(LENGTHS.FLIGHT_NUMBER);
+                leg.flightDate = mainSection.getNextDate(
+                    LENGTHS.FLIGHT_DATE,
+                    false,
+                    referenceYear
+                );
+                leg.compartmentCode = mainSection.getNextString(LENGTHS.COMPARTMENT_CODE);
+                leg.seatNumber = mainSection.getNextString(LENGTHS.SEAT_NUMBER);
+                leg.checkInSequenceNumber = mainSection.getNextString(
+                    LENGTHS.CHECK_IN_SEQUENCE_NUMBER
+                );
+                leg.passengerStatus = mainSection.getNextString(LENGTHS.PASSENGER_STATUS);
 
-            var year = referenceYear.HasValue ? referenceYear.Value : DateTime.Now.Year;
+                var conditionalSectionSize = mainSection.getNextSectionSize();
+                var conditionalSection = new SectionDecoder(
+                    mainSection.getNextString(conditionalSectionSize)
+                );
 
-            DateTime estimatedDate;
-            double difference;
-
-            switch (field.type)
-            {
-                case "date":
-                    {
-                        estimatedDate = DateTime.SpecifyKind(new DateTime(year, 1, 1).AddDays(int.Parse(value) - 1), DateTimeKind.Utc);
-                        difference = ((DateTime.Now.Year - estimatedDate.Year) * 12) + DateTime.Now.Month - estimatedDate.Month;
-
-                        if (!referenceYear.HasValue)
-                        {
-                            // Estimate the year for this date.
-                            // If the estimated date is too far in the past, add a year.
-                            if (difference > 10)
-                            {
-                                estimatedDate = DateTime.Parse(estimatedDate.AddYears(1).Year + value + "Z");
-                                //estimatedDate = parse(format(add(estimatedDate, { years: 1 }), "y") +value + "Z","yDDDX",Date.now());
-                            }
-                        }
-
-                        return estimatedDate;
-                    }
-                case "dateWithYear":
-                    {
-                        var yearLastDigit = value.Substring(0, 1);
-                        var dayOfYear = value.Substring(1);
-
-                        var targetYear = year.ToString().Substring(0, year.ToString().Length - 1) + yearLastDigit;
-                        estimatedDate = DateTime.SpecifyKind(new DateTime(int.Parse(targetYear), 1, 1).AddDays(int.Parse(dayOfYear) - 1), DateTimeKind.Utc);
-
-                        difference = (estimatedDate.Year - new DateTime(year, 1,1).AddDays(1).Year);
-
-                        if (difference > 2)
-                        {
-                            estimatedDate = DateTime.SpecifyKind(new DateTime(estimatedDate.Year - 10, 1, 1).AddDays(int.Parse(dayOfYear) - 1), DateTimeKind.Utc);
-                        }
-
-                        return estimatedDate;
-                    }
-                case "boolean":
-                    {
-                        return (value == "Y");
-                    }
-                default:
-                    return value;
-            }
-        }
-
-        private static int ParseField(string barcodeString, BCBPOutput output, BCBPField field, int? referenceYear, int legIndex)
-        {
-            var fieldLength = field.length.HasValue ? field.length.Value : barcodeString.Length;
-            var value = barcodeString.Substring(0, fieldLength).Trim();
-
-            if (value != "" && !field.meta)
-            {
-                if (field.unique)
+                if (!addedUniqueFields)
                 {
-                    output[field.name] = GetFieldValue(field, value, referenceYear);
+                    bcbp.meta.versionNumberIndicator = conditionalSection.getNextString(
+                        LENGTHS.VERSION_NUMBER_INDICATOR
+                    );
+                    bcbp.meta.versionNumber = conditionalSection.getNextNumber(
+                        LENGTHS.VERSION_NUMBER
+                    );
+
+                    var sectionASize = conditionalSection.getNextSectionSize();
+                    var sectionA = new SectionDecoder(
+                        conditionalSection.getNextString(sectionASize)
+                    );
+                    bcbp.data.passengerDescription = sectionA.getNextString(
+                        LENGTHS.PASSENGER_DESCRIPTION
+                    );
+                    bcbp.data.checkInSource = sectionA.getNextString(LENGTHS.CHECK_IN_SOURCE);
+                    bcbp.data.boardingPassIssuanceSource = sectionA.getNextString(
+                        LENGTHS.BOARDING_PASS_ISSUANCE_SOURCE
+                    );
+                    bcbp.data.issuanceDate = sectionA.getNextDate(
+                        LENGTHS.ISSUANCE_DATE,
+                        true,
+                        referenceYear
+                    );
+                    bcbp.data.documentType = sectionA.getNextString(LENGTHS.DOCUMENT_TYPE);
+                    bcbp.data.boardingPassIssuerDesignator = sectionA.getNextString(
+                        LENGTHS.BOARDING_PASS_ISSUER_DESIGNATOR
+                    );
+                    bcbp.data.baggageTagNumber = sectionA.getNextString(
+                        LENGTHS.BAGGAGE_TAG_NUMBER
+                    );
+                    bcbp.data.firstBaggageTagNumber = sectionA.getNextString(
+                        LENGTHS.FIRST_BAGGAGE_TAG_NUMBER
+                    );
+                    bcbp.data.secondBaggageTagNumber = sectionA.getNextString(
+                        LENGTHS.SECOND_BAGGAGE_TAG_NUMBER
+                    );
+
+                    addedUniqueFields = true;
                 }
-                else
-                {
-                    var leg = output.Legs[legIndex];
 
-                    if (leg == null)
+                var sectionBSize = conditionalSection.getNextSectionSize();
+                var sectionB = new SectionDecoder(
+                    conditionalSection.getNextString(sectionBSize)
+                );
+                leg.airlineNumericCode = sectionB.getNextString(
+                    LENGTHS.AIRLINE_NUMERIC_CODE
+                );
+                leg.serialNumber = sectionB.getNextString(LENGTHS.SERIAL_NUMBER);
+                leg.selecteeIndicator = sectionB.getNextString(LENGTHS.SELECTEE_INDICATOR);
+                leg.internationalDocumentationVerification = sectionB.getNextString(
+                    LENGTHS.INTERNATIONAL_DOCUMENTATION_VERIFICATION
+                );
+                leg.marketingCarrierDesignator = sectionB.getNextString(
+                    LENGTHS.MARKETING_CARRIER_DESIGNATOR
+                );
+                leg.frequentFlyerAirlineDesignator = sectionB.getNextString(
+                    LENGTHS.FREQUENT_FLYER_AIRLINE_DESIGNATOR
+                );
+                leg.frequentFlyerNumber = sectionB.getNextString(
+                    LENGTHS.FREQUENT_FLYER_NUMBER
+                );
+                leg.idIndicator = sectionB.getNextString(LENGTHS.ID_INDICATOR);
+                leg.freeBaggageAllowance = sectionB.getNextString(
+                    LENGTHS.FREE_BAGGAGE_ALLOWANCE
+                );
+                leg.fastTrack = sectionB.getNextBoolean();
+
+                leg.airlineInfo = conditionalSection.getRemainingString();
+
+                bcbp.data.Legs.Add(leg);
+            }
+
+            bcbp.meta.securityDataIndicator = mainSection.getNextString(
+                LENGTHS.SECURITY_DATA_INDICATOR
+            );
+            bcbp.data.securityDataType = mainSection.getNextString(
+                LENGTHS.SECURITY_DATA_TYPE
+            );
+
+            var securitySectionSize = mainSection.getNextSectionSize();
+            var securitySection = new SectionDecoder(
+                mainSection.getNextString(securitySectionSize)
+            );
+            bcbp.data.securityData = securitySection.getNextString(LENGTHS.SECURITY_DATA);
+
+            if (bcbp.data.issuanceDate != null && referenceYear == null)
+            {
+                foreach (var leg in bcbp.data.Legs)
+                {
+                    if (leg.flightDate != null)
                     {
-                        leg = new BCBPLeg();
-                        output.Legs.Add(leg);
-                    }
-
-                    leg[field.name] = GetFieldValue(field, value, referenceYear);
-                }
-            }
-
-            barcodeString = barcodeString.Substring(fieldLength);
-
-            if (field.fields != null)
-            {
-                // This is a field size so get the next X characters where X is the field size value
-                var sectionLength = int.Parse(value, System.Globalization.NumberStyles.HexNumber);
-                var sectionString = barcodeString.Substring(0, sectionLength);
-
-                var targetFields = field.fields.Where(f => legIndex == 0 || !f.unique);
-
-                foreach (var subField in targetFields)
-                {
-                    if (sectionString == string.Empty)
-                    {
-                        break;
-                    }
-
-                    var subFieldLength = ParseField(sectionString, output, subField, referenceYear, legIndex);
-                    fieldLength += subFieldLength;
-                    sectionString = sectionString.Substring(subFieldLength);
-                }
-            }
-
-            return fieldLength;
-        }
-
-        public static BCBPOutput Parse(string barcodeString, int? referenceYear = null)
-        {
-            var legs = int.Parse(barcodeString.Substring(1, 1));
-
-            var output = new BCBPOutput(barcodeString);
-
-            for (var i = 0; i < legs; i++)
-            {
-                // Start the leg with an empty object
-                output.Legs.Add(new BCBPLeg());
-
-                var fields = BCBPFields.AllFields.Where((f) =>
-                {
-                    return !f.isSecurityField && (i == 0 || !f.unique);
-                }).ToArray();
-
-                foreach (var field in fields)
-                {
-                    var fieldLength = ParseField(barcodeString, output, field, referenceYear, i);
-
-                    barcodeString = barcodeString.Substring(fieldLength);
-                }
-            }
-
-            // Security data needs to be decoded last
-            if (barcodeString.StartsWith("^"))
-            {
-                var fields = BCBPFields.AllFields.Where(f => f.isSecurityField);
-
-                foreach (var field in fields)
-                {
-                    var fieldLength = ParseField(barcodeString, output, field, referenceYear, 0);
-                    barcodeString = barcodeString.Substring(fieldLength);
-                }
-            }
-
-            // Special case for using the issuance year as the source of truth for other dates without a year
-            if (!referenceYear.HasValue && output.issuanceDate.HasValue)
-            {
-                var issuanceYear = output.issuanceDate.Value.ToString("yy");
-
-                foreach (var leg in output.Legs)
-                {
-                    var originalFlightDate = leg.flightDate.Value.DayOfYear;
-
-                    var estimatedDate = DateTime.SpecifyKind(new DateTime(output.issuanceDate.Value.Year, 1, 1).AddDays(originalFlightDate - 1), DateTimeKind.Utc);
-
-                    if (estimatedDate.CompareTo(leg.flightDate.Value) < 0)
-                    {
-                        leg.flightDate = estimatedDate;
+                        var dayOfYear = Utils.DateToDayOfYear(leg.flightDate.Value);
+                        leg.flightDate = Utils.DayOfYearToDate(
+                            dayOfYear,
+                            false,
+                            bcbp.data.issuanceDate?.Year
+                        );
                     }
                 }
             }
 
-            return output;
+            return bcbp;
         }
     }
 }
