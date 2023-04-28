@@ -38,7 +38,8 @@ public static class Utils
 
     public static string DateToDayOfYear(DateTime date, bool addYearPrefix = false)
     {
-        var start = DateTime.SpecifyKind(new DateTime(2022, 1, 1).AddDays(-1), DateTimeKind.Utc).ToLocalTime();
+        var currentYear = DateTime.Now.Year;
+        var start = DateTime.SpecifyKind(new DateTime(currentYear, 1, 1).AddDays(-1), DateTimeKind.Utc).ToLocalTime();
         var diff = date.ToUniversalTime().Subtract(DateTime.UnixEpoch).TotalMilliseconds -
                    start.ToUniversalTime().Subtract(DateTime.UnixEpoch).TotalMilliseconds +
                    (-TimeZoneInfo.Local.GetUtcOffset(start).TotalMinutes -
